@@ -1,0 +1,607 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html>
+<head>
+  <style type="text/css">
+    @media print {
+      body { }
+      p.img { text-align: center; page-break-inside: avoid }
+      img.CC { display: inline }
+    }
+    @media screen {
+      body { max-width: 800px; margin: auto }
+      p.img { text-align: center }
+      img.CC { display: inline }
+    }
+    p.date {
+      font-size: smaller;
+      margin: 0;
+    }
+    p.versionHistory {
+      color: gray
+    }
+    p.versionHistory a {
+      color: gray
+    }
+    p.ref {
+      text-indent: -2em;
+      padding-left: 2em;
+    }
+    img.example {
+      border: solid 1px #AAAAAA;
+    }
+  </style>
+
+  <title>
+    Improved Clipping in the R Graphics Engine
+  </title>
+</head>
+<body>
+  <h1>Improved Clipping in the R Graphics Engine</h1>
+  <p>
+    <span style="font-style: italic">by Paul Murrell</span>
+    <a href="http://orcid.org"><img alt="" src="https://www.stat.auckland.ac.nz/~paul/ORCID/ORCiD.png" style="width: 16px; height: 16px; vertical-align: middle" /></a> <span style="font-family: mono; font-size: small"><a href="http://orcid.org/0000-0002-3224-8858">http://orcid.org/0000-0002-3224-8858</a></span>
+  </p>
+  <p class="date">
+    Version 1:
+    <rcode echo="FALSE" results="asis">
+cat(format(Sys.Date(), "%A %d %B %Y"))
+    </rcode>
+  </p>
+
+  <rcode id="init" echo="FALSE" message="FALSE" results="hide">
+opts_chunk$set(comment=" ", tidy=FALSE)
+options(width=100)
+## For wonky desktop set up
+options(bitmapType="cairo")
+  </rcode>
+
+  <rcode echo="FALSE">
+source("run.R")
+runRdevel <- function(file, label=gsub(".R", "", file), width=7, height=7,
+                      xfig=FALSE) {
+    writeLines(c('source("run.R")',
+                 paste0('runR("', file, '", "', label, '", ', width, ", ",
+                        height, ", ", xfig, ")")),
+               "temp.R")
+    ## Desktop
+    ## system("Rscript+ temp.R")
+    ## Docker
+    system("/R/bin/Rscript temp.R")
+}    
+  </rcode>
+
+  <hr/>
+  <p>
+    <a rel="license"
+    href="http://creativecommons.org/licenses/by/4.0/"><img class="CC"
+    alt="Creative Commons License" style="border-width:0"
+    src="https://i.creativecommons.org/l/by/4.0/88x31.png"/></a><br/><span
+    xmlns:dct="http://purl.org/dc/terms/"
+    property="dct:title">This document</span>
+    by <span xmlns:cc="http://creativecommons.org/ns#"
+    property="cc:attributionName">Paul
+    Murrell</span> is licensed under a <a rel="license"
+    href="http://creativecommons.org/licenses/by/4.0/">Creative
+    Commons Attribution 4.0 International License</a>.
+  </p>
+  <hr/>
+  <p>
+    This report describes improvements to clipping in the R graphics engine.
+    These changes will be of particular interest to maintainers of 
+    graphics device packages.
+  </p>
+
+  <toc/>
+
+  <h2><a name="intro">Introduction</a></h2>
+  <p>
+    The R graphics engine maintains a (rectangular) clipping region;
+    any drawing that occurs outside of the clipping region is not 
+    rendered.
+  </p>
+  <p>
+    The clipping region is not normally explicitly controlled by the
+    user, but is set implicitly by plotting functions.  For example,
+    the following code draws a scatterplot with a text label below each
+    point.  When drawing the points and the text labels, 
+    the clipping region is set to be just the data region of the plot, so
+    some of the labels are clipped.  Conversely, when drawing the axes,
+    the clipping region is reset to be 
+    the whole page, so that labels and tick marks
+    can be drawn outside the data region of the plot.
+  </p>
+
+  <rcode echo="FALSE">
+cat(readLines("plot-clip.R"), sep="\n")
+  </rcode>
+  <rcode echo="FALSE" results="hide">
+runR("plot-clip.R", width=5, height=5)
+  </rcode>
+  <p>
+    <img src="plot-clip.svg" class="example"/>
+  </p>
+
+  <p>
+    The user is also able to explicitly control the clipping region.
+    In the following code, before drawing the text labels,
+    the <code>par</code> function is used to
+    set the <code>xpd</code> graphics parameter so that the clipping
+    region is the whole page.  This allows the labels to be drawn 
+    outside the plot region.
+  </p>
+  
+  <rcode echo="FALSE">
+cat(readLines("plot-noclip.R"), sep="\n")
+  </rcode>
+  <rcode echo="FALSE" results="hide">
+runR("plot-noclip.R", width=5, height=5)
+  </rcode>
+  <p>
+    <img src="plot-noclip.svg" class="example"/>
+  </p>
+
+  <p>
+    There is also a <code>clip</code> function in base graphics,
+    to set the clip region to a subset of the data region of a plot,
+    and in the 'grid' graphics system drawing can be clipped to
+    any (unrotated) viewport and there is a <code>grid.clip</code> function
+    for setting the clipping region within a viewport.
+  </p>
+
+  <p>
+    The following code shows an example of deliberately controlling
+    the clipping region with the <code>clip</code> function.
+    We create a blank plot and generate x and y values representing 
+    a Gaussian curve.  We set the clip region to limit output to the
+    x-range -1.96 to 1.96 and fill a polygon under the curve, which 
+    gets clipped to that x-range.  Then we set the clip region
+    back to the full data region of the plot and draw a line all the 
+    way along the curve.  A small detail is that the thick black line
+    is partially clipped as it asymptotes to the line of the x-axis.
+    It is this sort of detailed control that clipping is useful for
+    and where problems with the R graphics engine clipping become apparent.
+  </p>
+
+  <rcode echo="FALSE">
+cat(readLines("plot-diagram.R"), sep="\n")
+  </rcode>
+  <rcode echo="FALSE" results="hide">
+runR("plot-diagram.R", width=5, height=3)
+  </rcode>
+  <p>
+    <img src="plot-diagram.svg"/>
+  </p>
+
+  <p>
+    Most graphics devices are capable of clipping output,
+    but the R graphics engine always performs some clipping itself before
+    it sends output to the graphics device.
+    One reason for this is that some graphics devices, e.g., 
+    the <code>xfig</code>
+    device, are not
+    capable of clipping output, so R must attempt to send output
+    that is already clipped. 
+  </p>
+  <p>
+    Another, historical, reason for the R graphics engine performing 
+    its own clipping 
+    is that the viewers for some output formats, e.g., the ghostview
+    viewer for PostScript files, were at one time
+    unable to cope with very large values. 
+  </p>
+  <p>
+    This lead to the following basic algorithm for clipping in the graphics
+    engine:
+  </p>
+  <ul>
+    <li>
+      Clip output to the edges of the graphics device (whether the
+      device can clip itself or not).
+    </li>
+    <li>
+      If the device cannot clip for itself, also clip output to the
+      current graphics engine clip region.
+    </li>
+    <li>
+      Send clipped output to the graphics device, which may perform 
+      further clipping.
+    </li>
+  </ul>
+
+  <h2><a name="problems">Problems</a></h2>
+  <p>
+    Unfortunately, there are several problems
+    with the clipping that the R graphics engine
+    performs, as we will demonstrate in this section.  
+  </p>
+  <p>
+    We will just use clipping of 
+    polygons to demonstrate the problems, both because that is where
+    the problems are at their worst and because it is easy to demonstrate
+    the problems with polygons.  It is important to point out that
+    the problems affect more than just polygons and also that
+    polygons are themselves
+    useful in R plots. The filled area under the 
+    Gaussian curve from the previous section
+    is one example; another example is the <code>geom_ribbon</code>
+    function in 'ggplot2' (<a href="#pkg:ggplot2"/>) 
+    that is used to draw confidence bands.
+  </p>
+  <p>
+    This section will also make use of the 'grid' graphics system,
+    again because it is easier to produce simple demonstrations,
+    but the R graphics engine clipping affects both 'graphics' and
+    'grid' packages.
+  </p>
+  
+  <h3>Clipping to the edge of the device</h3>
+  <p>
+    The first problem is that clipping to the edges of the 
+    graphics device (to avoid very large values) is too conservative.
+  </p>
+  <p>
+    The following code provides a simple demonstration.  
+    We use the 'grid' package to draw a simple line segment
+    that starts outside the left edge of the graphics device
+    and ends towards the top-right of the device.
+  </p>
+  <p>
+    The R graphics engine clips the line to the edge of
+    the device and, because we drew the line very thick and 
+    enforced a "butt" ending, we can clearly see the end of the clipped line.
+  </p>
+  
+  <rcode echo="FALSE">
+cat(readLines("clip-edge.R"), sep="\n")
+  </rcode>
+  <rcode echo="FALSE" results="hide">
+runR("clip-edge.R", width=2, height=2)
+  </rcode>
+  <p>
+    <img src="clip-edge.svg" class="example"/>
+  </p>
+
+  <p>
+    The correct output should look like the image below.
+  </p>
+
+  <rcode echo="FALSE" results="hide">
+runRdevel("clip-edge-good.R", width=2, height=2)
+  </rcode>
+  <p>
+    <img src="clip-edge-good.svg" class="example"/>
+  </p>
+
+  <h3>Clipping filled polygons</h3>
+  <p>
+    Another problem with clipping in the R graphics engine is that
+    filled polygons
+    that are clipped to the edge of the graphics device produce 
+    a border along the edge of the graphics device.
+  </p>
+  <p>
+    The following code draws a polygon that extends past the
+    right edge of the device.  The graphics engine clips the
+    polygon to the edge of the device, but because we drew the
+    polygon with a thick border, we see the clipped border
+    running down the edge of the device.
+  </p>
+
+  <rcode echo="FALSE">
+cat(readLines("clip-border.R"), sep="\n")
+  </rcode>
+  <rcode echo="FALSE" results="hide">
+runR("clip-border.R", width=2, height=2)
+  </rcode>
+  <p>
+    <img src="clip-border.svg" class="example"/>
+  </p>
+  
+  <p>
+    The image below shows what the result should look like.
+  </p>
+  <rcode echo="FALSE" results="hide">
+runRdevel("clip-border-good.R", width=2, height=2)
+  </rcode>
+  <p>
+    <img src="clip-border-good.svg" class="example"/>
+  </p>
+  
+  <h3>Clipping empty polygons</h3>
+  <p>
+    A more subtle problem occurs when the graphics engine clips an
+    empty polygon to the edge of the device.
+    In this case,
+    in order to avoid drawing an edge down the side of the device,
+    the polygon is converted to a polyline,
+    but that produces problems of its own.
+  </p>
+  <p>
+    In the following code, we draw a polygon with no fill
+    and a "mitre" line join style, which means that the 
+    corners of the polygon should be pointy, rather than rounded.
+    When the polygon is clipped by the graphics engine, it gets
+    converted to a polyline and, because that polyline starts and
+    ends within the device (the left corner of the polygon), and
+    because we drew a thick, translucent border, 
+    we can see the ends of the polyline.  The default
+    end style for the start and end of the
+    polyline is "round", so the left corner of the
+    polygon appears round, and the border is translucent so we can 
+    see where the start and end of the polyline overlap.
+  </p>
+  
+  <rcode echo="FALSE">
+cat(readLines("clip-convert.R"), sep="\n")
+  </rcode>
+  <rcode echo="FALSE" results="hide">
+runR("clip-convert.R", width=2, height=2)
+  </rcode>
+  <p>
+    <img src="clip-convert.svg" class="example"/>
+  </p>
+
+  <p>
+    The following code and output may make the effect more obvious;
+    here we change the line end style to "butt".  The original
+    polygon has been converted to a polyline that starts and ends
+    at the
+    left corner of the polygon (with two square ends).  Furthermore,
+    the polyline is clipped to the edge of the device, so we also
+    see the square ends of the clipped polyline 
+    at the right edge of the device.
+  </p>
+
+  <rcode echo="FALSE">
+cat(readLines("clip-convert-butt.R"), sep="\n")
+  </rcode>
+  <rcode echo="FALSE" results="hide">
+runR("clip-convert-butt.R", width=2, height=2)
+  </rcode>
+  <p>
+    <img src="clip-convert-butt.svg" class="example"/>
+  </p>
+
+  <p>
+    The image below shows what the output should look like.
+  </p>
+
+  <rcode echo="FALSE" results="hide">
+runRdevel("clip-convert-good.R", width=2, height=2)
+  </rcode>
+  <p>
+    <img src="clip-convert-good.svg" class="example"/>
+  </p>
+  
+
+  <h2><a name="Solutions">Solutions</a></h2>
+  <p>
+    Several changes have been made to the R graphics engine to
+    improve the clipping results.
+  </p>
+
+  <h3><code>dev-&gt;canClip = NA_LOGICAL</code></h3>
+  <p>
+    The most significant change to the graphics engine
+    is that graphics devices can now signal that they do would like
+    to handle all clipping operations for themselves.
+    Each graphics device has a <code>canClip</code> flag, which
+    is a <code>TRUE</code> or <code>FALSE</code> value to indicate whether the
+    device can perform clipping.  This flag can now also take the
+    value <code>NA_LOGICAL</code>, in which case the R graphics engine 
+    will perform no clipping at all before it sends output to the 
+    graphics device.  
+  </p>
+  <p>
+    One advantage of this change is that there is no chance for the
+    R graphics engine to make any mistakes or introduce any artifacts
+    when it clips output.  There may also be performance gains because
+    the R graphics engine will no longer be performing any 
+    clipping calculations.
+  </p>
+  <p>
+    Get benchmarks from 'ragg' device ???
+  </p>
+
+  <h3><code>dev-&gt;canClip = TRUE</code></h3>
+  <p>
+    For existing devices that can clip (<code>canClip=TRUE</code>),
+    the graphics engine still clips output to avoid very large values,
+    but it now does this to a region well beyond the edges of the
+    graphics device.  
+  </p>
+  <p>
+    This change solves the first two problems from the previous section:  
+    thick lines may be clipped,
+    but we will not see the end of the clipped line at the edge of the device;
+    and polygons with thick borders may be clipped, but we will not see the
+    clipped polygon border along the edge of the device.
+  </p>
+
+  <h3><code>dev-&gt;canClip = FALSE</code></h3>
+  <p>
+    For devices that cannot clip for themselves
+    (<code>canClip=FALSE</code>), the R graphics engine
+    will also perform clipping within the device area. In this case, we
+    have all of the same problems as for clipping to the edges of the 
+    device.  The following examples provide demonstrations using
+    the <code>xfig</code> device.  In the output of these
+    examples, the device region is represented by a grey border
+    and the region that we are clipping to is represented by
+    a smaller grey-filled rectangle.
+  </p>
+  <p>
+    We will see the ends of lines that are clipped to a region 
+    within the device area.  This problem remains.
+  </p>
+  <rcode echo="FALSE">
+cat(readLines("clip-edge.R"), sep="\n")
+  </rcode>
+  <rcode echo="FALSE" results="hide" warning="FALSE">
+runR("clip-edge.R", width=2, height=2, xfig=TRUE)
+  </rcode>
+  <p>
+    <img src="clip-edge.png"/>
+  </p>
+
+  <p>
+    We also see the border of polygons that are clipped to
+    a region within the device.
+  </p>
+  <rcode echo="FALSE">
+cat(readLines("clip-border.R"), sep="\n")
+  </rcode>
+  <rcode echo="FALSE" results="hide" warning="FALSE">
+runR("clip-border.R", width=2, height=2, xfig=TRUE)
+  </rcode>
+  <p>
+    <img src="clip-border.png"/>
+  </p>
+
+  <p>
+    That problem has been improved by drawing the fill and border
+    of the polygon separately and converting the polygon border
+    to a polyline border.
+  </p>
+  <rcode echo="FALSE" results="hide" warning="FALSE">
+runRdevel("clip-border-good.R", width=2, height=2, xfig=TRUE)
+  </rcode>
+  <p>
+    <img src="clip-border-good.png"/>
+  </p>
+  
+  <p>
+    We also see overlapping line ends when an empty
+    polygon is converted to a polyline.
+  </p>
+
+  <rcode echo="FALSE">
+cat(readLines("clip-convert-solid.R"), sep="\n")
+  </rcode>
+  <rcode echo="FALSE" results="hide" warning="FALSE">
+runR("clip-convert-solid.R", width=2, height=2, xfig=TRUE)
+  </rcode>
+  <p>
+    <img src="clip-convert-solid.png"/>
+  </p>
+
+  <p>
+    This problem has been improved by reordering the vertices 
+    of the converted polyline so that it begins outside the
+    clipping region (so that all vertices within the clipping
+    region are joins rather than line ends).
+  </p>
+
+  <rcode echo="FALSE" results="hide" warning="FALSE">
+runRdevel("clip-convert-solid-good.R", width=2, height=2, xfig=TRUE)
+  </rcode>
+  <p>
+    <img src="clip-convert-solid-good.png"/>
+  </p>
+
+  <p>
+    This also solves the problem for devices that can clip
+    for themselves for the very rare cases where a polygon
+    extends well beyond the edges of the device so that the R
+    graphics engine clips the output anyway.
+  </p>
+
+  <h2><a name="summary">Summary</a></h2>
+  <p>
+    The clipping that is performed by the R graphics engine has been 
+    improved so that there are many fewer artifacts produced by this
+    clipping.  It is now also possible for a graphics device to indicate,
+    via <code>dev->canClip = NA_LOGICAL</code>, that it does not want
+    the graphics engine to perform any clipping at all.
+  </p>
+
+  <h2><a name="acknowledgements">Acknowledgements</a></h2>
+  <p>
+    This work was
+    partially supported by a donation from R Studio to The University
+    of Auckland Foundation.
+    Thanks to Thomas Lin Pedersen for the initial reports about
+    problems with the R graphics engine clipping.  
+  </p>
+  
+  <h2><a name="requirements">Technical requirements</a></h2>
+  <p>
+    The examples and discussion in this report relate to 
+    the development version of R (specifically revision 78456),
+    which will become R version 4.1.0.
+    The examples of "old" clipping behaviour were produced
+    using R version 3.6.3.
+  </p>
+  <p>
+    This report was generated within a Docker container
+    (see <a href="#Resources">Resources</a> section below).
+  </p>
+
+  <h2><a name="Resources">Resources</a></h2>
+  <ul>
+    <li>
+      The <a href="r-clipping.cml">raw source file</a> for this
+      report, a <a href="r-clipping.xml">valid XML</a>
+      transformation of the source file, a <a
+      href="r-clipping.Rhtml">'knitr' document</a> generated from
+      the XML file, 
+      two <a href="toc.R">R</a> <a href="bib.R">files</a> and
+      the <a href="r-clipping.bib">bibtex file</a>
+      that are used to generate the table of contents and reference sections,
+      two <a href="common.xsl">XSL</a> <a
+      href="knitr.xsl">files</a> and an 
+      <a href="knit.R">R file</a> that are used to transform the XML to
+      the 'knitr' document, and a <a href="Makefile">Makefile</a> that
+      contains code for the other transformations and coordinates
+      everything.  
+      These materials are also available
+      on <a href="https://github.com/pmur002/r-clipping-report/releases/tag/v1">github</a>.
+    </li>
+    <li>
+      This report was generated within a 
+      <a href="https://www.docker.com/">Docker</a> container.
+      The Docker command to build the report is included in the Makefile above.
+      The Docker image for the container is available from
+      <a href="https://hub.docker.com/r/pmur002/r-clipping-report/">Docker Hub</a>;
+      alternatively, the image can be rebuilt from its 
+      <a href="Dockerfile">Dockerfile</a>.
+    </li>
+  </ul>
+
+  <h2>How to cite this report</h2>
+  <p>
+    Murrell, P. (2020). "Improved Clipping in the R Graphics Engine" 
+    Technical Report 2020-??, Department of Statistics, The University of Auckland. 
+    Version 1.
+    [ <a href="how-to-cite.bib">bib</a> |
+      <a href="">DOI</a> | 
+      <a href="">http</a> ]
+  </p>
+
+  <h2><a name="references">References</a></h2>
+  <ul style="list-style-type: none">
+    <li>
+      <a name="R"/>
+    </li>
+    <li>
+      <a name="pkg:ggplot2"/>
+    </li>
+  </ul>
+
+  <hr/>
+  <p>
+    <a rel="license"
+    href="http://creativecommons.org/licenses/by/4.0/"><img class="CC"
+    alt="Creative Commons License" style="border-width:0"
+    src="https://i.creativecommons.org/l/by/4.0/88x31.png"/></a><br/><span
+    xmlns:dct="http://purl.org/dc/terms/"
+    property="dct:title">This document</span>
+    by <span xmlns:cc="http://creativecommons.org/ns#"
+    property="cc:attributionName">Paul
+    Murrell</span> is licensed under a <a rel="license"
+    href="http://creativecommons.org/licenses/by/4.0/">Creative
+    Commons Attribution 4.0 International License</a>.
+  </p>
+
+</body>
+</html>

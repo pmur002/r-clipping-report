@@ -1,0 +1,7 @@
+
++ Documentation of fixes to R's own clipping of graphics output
+
++ The idea is to write one of my own reports (for Stat Tech Blog)
+
+  AND THEN build a (static) R Blog post from the output of that
+
