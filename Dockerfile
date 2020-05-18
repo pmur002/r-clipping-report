@@ -33,6 +33,18 @@ RUN apt-get install -y imagemagick
 RUN apt-get install -y transfig
 
 # Packages used in the report
+# For 'magick'
+RUN apt-get install -y software-properties-common
+RUN add-apt-repository -y ppa:cran/imagemagick
+RUN apt-get update
+RUN apt-get install -y libmagick++-dev
+# For 'pdftools'
+RUN add-apt-repository -y ppa:cran/poppler
+RUN apt-get update
+RUN apt-get install -y libpoppler-cpp-dev
+RUN Rscript -e 'library(devtools); install_version("gdiff", "0.2-1", repos="https://cran.rstudio.com/")'
+RUN R/bin/Rscript -e 'install.packages("devtools", repos="https://cran.rstudio.com/")'
+RUN R/bin/Rscript -e 'library(devtools); install_version("gdiff", "0.2-1", repos="https://cran.rstudio.com/")'
 
 # The main report package(s)
 

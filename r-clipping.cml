@@ -27,7 +27,7 @@
       padding-left: 2em;
     }
     img.example {
-      border: solid 1px #AAAAAA;
+      /* border: solid 1px #AAAAAA; */
     }
   </style>
 
@@ -506,6 +506,39 @@ runRdevel("clip-convert-solid-good.R", width=2, height=2, xfig=TRUE)
     graphics engine clips the output anyway.
   </p>
 
+  <h2><a name="impacts">Impacts on R packages</a></h2>
+  <p>
+    The addition of <code>dev->canClip = NA_LOGICAL</code> may be of interest
+    to developers of R graphics device packages, e.g., the 
+    'Cairo' package (<a href="#pkg:Cairo"/>), in case there are
+    performance gains to be had.
+  </p>
+  <p>
+    Packages that conduct visual difference testing, e.g., with
+    'vdiffr' (<a href="#pkg:vdiffr"/>) or 'gdiff' (<a href="#pkg:gdiff"/>,
+    <a href="#murrell-visual-testing-2020"/>),
+    may notice minor changes and may need to update their "model" output.
+    For example, the code below shows the effect of these clipping changes
+    on a simple scatterplot (comparing 
+    R 3.6.3 with the development version of R).
+  </p>
+  <rcode>
+library(gdiff)
+f <- function() plot(1:10, pch=2)
+gdiff(f,
+      device=pngDevice(type="cairo"),
+      session=list(control=localSession(Rpath="Rscript"),
+                   test=localSession(Rpath="/R/bin/Rscript")))
+  </rcode>
+  <p>
+    The differences are small (see the red spots in the image of the
+    differences below), but will show up in visual difference testing
+    like this.
+  </p>
+  <p>
+    <img src="Compare/f-001.png.png"/>
+  </p>
+
   <h2><a name="summary">Summary</a></h2>
   <p>
     The clipping that is performed by the R graphics engine has been 
@@ -586,6 +619,19 @@ runRdevel("clip-convert-solid-good.R", width=2, height=2, xfig=TRUE)
     <li>
       <a name="pkg:ggplot2"/>
     </li>
+    <li>
+      <a name="pkg:Cairo"/>
+    </li>
+    <li>
+      <a name="pkg:vdiffr"/>
+    </li>
+    <li>
+      <a name="pkg:gdiff"/>
+    </li>
+    <li>
+      <a name="murrell-visual-testing-2020"/>
+    </li>
+
   </ul>
 
   <hr/>

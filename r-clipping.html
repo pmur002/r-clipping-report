@@ -89,7 +89,7 @@
       padding-left: 2em;
     }
     img.example {
-      border: solid 1px #AAAAAA;
+      /* border: solid 1px #AAAAAA; */
     }
   </style>
     <title>
@@ -109,7 +109,7 @@
     </p>
     <p class="date">
     Version 1:
-Friday 15 May 2020
+Monday 18 May 2020
   </p>
 
 
@@ -138,19 +138,22 @@ Friday 15 May 2020
           <a href="#Solutions">3. Solutions</a>
         </li>
         <li>
-          <a href="#summary">4. Summary</a>
+          <a href="#impacts">4. Impacts on R packages</a>
         </li>
         <li>
-          <a href="#acknowledgements">5. Acknowledgements</a>
+          <a href="#summary">5. Summary</a>
         </li>
         <li>
-          <a href="#requirements">6. Technical requirements</a>
+          <a href="#acknowledgements">6. Acknowledgements</a>
         </li>
         <li>
-          <a href="#Resources">7. Resources</a>
+          <a href="#requirements">7. Technical requirements</a>
         </li>
         <li>
-          <a href="#references">8. References</a>
+          <a href="#Resources">8. Resources</a>
+        </li>
+        <li>
+          <a href="#references">9. References</a>
         </li>
       </ul>
     </div>
@@ -549,7 +552,46 @@ Friday 15 May 2020
     graphics engine clips the output anyway.
   </p>
     <h2>
-      <a name="summary">4. Summary</a>
+      <a name="impacts">4. Impacts on R packages</a>
+    </h2>
+    <p>
+    The addition of <code>dev-&gt;canClip = NA_LOGICAL</code> may be of interest
+    to developers of R graphics device packages, e.g., the 
+    'Cairo' package (<a href="#pkg:Cairo">Urbanek and Horner, 2020</a>), in case there are
+    performance gains to be had.
+  </p>
+    <p>
+    Packages that conduct visual difference testing, e.g., with
+    'vdiffr' (<a href="#pkg:vdiffr">Henry et al., 2019</a>) or 'gdiff' (<a href="#pkg:gdiff">Murrell, 2020a</a>,
+    <a href="#murrell-visual-testing-2020">Murrell, 2020b</a>),
+    may notice minor changes and may need to update their "model" output.
+    For example, the code below shows the effect of these clipping changes
+    on a simple scatterplot (comparing 
+    R 3.6.3 with the development version of R).
+  </p>
+<div class="chunk" id="unnamed-chunk-28"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl kwd">library</span><span class="hl std">(gdiff)</span>
+<span class="hl std">f</span> <span class="hl kwb">&lt;-</span> <span class="hl kwa">function</span><span class="hl std">()</span> <span class="hl kwd">plot</span><span class="hl std">(</span><span class="hl num">1</span><span class="hl opt">:</span><span class="hl num">10</span><span class="hl std">,</span> <span class="hl kwc">pch</span><span class="hl std">=</span><span class="hl num">2</span><span class="hl std">)</span>
+<span class="hl kwd">gdiff</span><span class="hl std">(f,</span>
+      <span class="hl kwc">device</span><span class="hl std">=</span><span class="hl kwd">pngDevice</span><span class="hl std">(</span><span class="hl kwc">type</span><span class="hl std">=</span><span class="hl str">&quot;cairo&quot;</span><span class="hl std">),</span>
+      <span class="hl kwc">session</span><span class="hl std">=</span><span class="hl kwd">list</span><span class="hl std">(</span><span class="hl kwc">control</span><span class="hl std">=</span><span class="hl kwd">localSession</span><span class="hl std">(</span><span class="hl kwc">Rpath</span><span class="hl std">=</span><span class="hl str">&quot;Rscript&quot;</span><span class="hl std">),</span>
+                   <span class="hl kwc">test</span><span class="hl std">=</span><span class="hl kwd">localSession</span><span class="hl std">(</span><span class="hl kwc">Rpath</span><span class="hl std">=</span><span class="hl str">&quot;/R/bin/Rscript&quot;</span><span class="hl std">)))</span>
+</pre></div>
+<div class="output"><pre class="knitr r">  
+  Files that differ [1/1]
+  ----------------------------------------------------------------------------------------------------
+  Control/f-001.png differs from Test/f-001.png (Compare/f-001.png.png [9])
+</pre></div>
+</div></div>
+    <p>
+    The differences are small (see the red spots in the image of the
+    differences below), but will show up in visual difference testing
+    like this.
+  </p>
+    <p>
+      <img src="Compare/f-001.png.png">
+    </p>
+    <h2>
+      <a name="summary">5. Summary</a>
     </h2>
     <p>
     The clipping that is performed by the R graphics engine has been 
@@ -559,7 +601,7 @@ Friday 15 May 2020
     the graphics engine to perform any clipping at all.
   </p>
     <h2>
-      <a name="acknowledgements">5. Acknowledgements</a>
+      <a name="acknowledgements">6. Acknowledgements</a>
     </h2>
     <p>
     This work was
@@ -569,7 +611,7 @@ Friday 15 May 2020
     problems with the R graphics engine clipping.  
   </p>
     <h2>
-      <a name="requirements">6. Technical requirements</a>
+      <a name="requirements">7. Technical requirements</a>
     </h2>
     <p>
     The examples and discussion in this report relate to 
@@ -583,7 +625,7 @@ Friday 15 May 2020
     (see <a href="#Resources">Resources</a> section below).
   </p>
     <h2>
-      <a name="Resources">7. Resources</a>
+      <a name="Resources">8. Resources</a>
     </h2>
     <ul>
       <li>
@@ -622,9 +664,51 @@ Friday 15 May 2020
       <a href="">http</a> ]
   </p>
     <h2>
-      <a name="references">8. References</a>
+      <a name="references">9. References</a>
     </h2>
     <dl>
+<dt>
+[<a name="pkg:vdiffr">Henry et al., 2019</a>]
+</dt>
+<dd>
+Henry, L., Sutherland, C., Hong, D., Luciani, T. J., Decorde, M., and Lise, V.
+  (2019).
+ <em>vdiffr: Visual Regression Testing and Graphical Diffing</em>.
+ R package version 0.3.1.
+[ <a href="r-clipping-bib_bib.html#pkg:vdiffr">bib</a> | 
+<a href="https://CRAN.R-project.org/package=vdiffr">http</a> ]
+
+</dd>
+
+
+<dt>
+[<a name="pkg:gdiff">Murrell, 2020a</a>]
+</dt>
+<dd>
+Murrell, P. (2020a).
+ <em>gdiff: Graphical Difference Testing</em>.
+ https://github.com/pmur002/.
+[ <a href="r-clipping-bib_bib.html#pkg:gdiff">bib</a> ]
+
+</dd>
+
+
+<dt>
+[<a name="murrell-visual-testing-2020">Murrell, 2020b</a>]
+</dt>
+<dd>
+Murrell, P. (2020b).
+ Visual testing for graphics in r.
+ Technical Report 2020-01, Department of Statistics, The University of
+  Auckland.
+ version 1.
+[ <a href="r-clipping-bib_bib.html#murrell-visual-testing-2020">bib</a> | 
+<a href="http://doi.org/10.17608/k6.auckland.11521212">DOI</a> | 
+<a href="https://stattech.wordpress.fos.auckland.ac.nz/2020/01/06/2020-01-visual-testing-for-graphics-in-r">http</a> ]
+
+</dd>
+
+
 <dt>
 [<a name="R">R Core Team, 2018</a>]
 </dt>
@@ -634,6 +718,21 @@ R Core Team (2018).
  R Foundation for Statistical Computing, Vienna, Austria.
 [ <a href="r-clipping-bib_bib.html#R">bib</a> | 
 <a href="https://www.R-project.org/">http</a> ]
+
+</dd>
+
+
+<dt>
+[<a name="pkg:Cairo">Urbanek and Horner, 2020</a>]
+</dt>
+<dd>
+Urbanek, S. and Horner, J. (2020).
+ <em>Cairo: R Graphics Device using Cairo Graphics Library for
+  Creating High-Quality Bitmap (PNG, JPEG, TIFF), Vector (PDF, SVG, PostScript)
+  and Display (X11 and Win32) Output</em>.
+ R package version 1.5-12.
+[ <a href="r-clipping-bib_bib.html#pkg:Cairo">bib</a> | 
+<a href="https://CRAN.R-project.org/package=Cairo">http</a> ]
 
 </dd>
 

@@ -14,6 +14,9 @@ runR <- function(file, label=gsub(".R", "", file), width=7, height=7,
     }
     ## Print to make sure plots are displayed
     source(file, print.eval=TRUE)
+    if (!xfig) {
+        grid.rect(gp=gpar(col="grey", fill=NA, lwd=2))
+    }
     dev.off()
     if (xfig) {
         pngfile <- gsub("[.]fig", ".png", figfile)
