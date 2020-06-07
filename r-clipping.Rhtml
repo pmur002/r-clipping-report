@@ -81,7 +81,8 @@ runRdevel <- function(file, label=gsub(".R", "", file), width=7, height=7,
     <p>
     This report describes improvements to clipping in the R graphics engine.
     These changes will be of particular interest to maintainers of 
-    graphics device packages.
+    R graphics device packages and to maintainers of R packages that
+    perform visual difference testing.
   </p>
     <div>
       <h2>Table of Contents:</h2>
@@ -163,7 +164,7 @@ runR("plot-noclip.R", width=5, height=5)
     <p>
     There is also a <code>clip</code> function in base graphics,
     to set the clip region to a subset of the data region of a plot,
-    and in the 'grid' graphics system drawing can be clipped to
+    and, in the 'grid' graphics system, drawing can be clipped to
     any (unrotated) viewport and there is a <code>grid.clip</code> function
     for setting the clipping region within a viewport.
   </p>
@@ -177,8 +178,9 @@ runR("plot-noclip.R", width=5, height=5)
     back to the full data region of the plot and draw a line all the 
     way along the curve.  A small detail is that the thick black line
     is partially clipped as it asymptotes to the line of the x-axis.
-    It is this sort of detailed control that clipping is useful for
-    and where problems with the R graphics engine clipping become apparent.
+    It is this sort of detailed control that clipping is useful for,
+    but this is also
+    where problems with the R graphics engine clipping can become apparent.
   </p>
 <!--begin.rcode echo=FALSE
 cat(readLines("plot-diagram.R"), sep="\n")
@@ -320,7 +322,7 @@ runRdevel("clip-border-good.R", width=2, height=2)
     <h3>Clipping empty polygons</h3>
     <p>
     A more subtle problem occurs when the graphics engine clips an
-    empty polygon to the edge of the device.
+    <strong>empty</strong> polygon to the edge of the device.
     In this case,
     in order to avoid drawing an edge down the side of the device,
     the polygon is converted to a polyline,
@@ -389,7 +391,7 @@ runRdevel("clip-convert-good.R", width=2, height=2)
     </h3>
     <p>
     The most significant change to the graphics engine
-    is that graphics devices can now signal that they do would like
+    is that graphics devices can now signal that they would like
     to handle all clipping operations for themselves.
     Each graphics device has a <code>canClip</code> flag, which
     is a <code>TRUE</code> or <code>FALSE</code> value to indicate whether the
@@ -400,13 +402,10 @@ runRdevel("clip-convert-good.R", width=2, height=2)
   </p>
     <p>
     One advantage of this change is that there is no chance for the
-    R graphics engine to make any mistakes or introduce any artifacts
+    R graphics engine to make any mistakes or to introduce any artifacts
     when it clips output.  There may also be performance gains because
     the R graphics engine will no longer be performing any 
     clipping calculations.
-  </p>
-    <p>
-    Get benchmarks from 'ragg' device ???
   </p>
     <h3>
       <code>dev-&gt;canClip = TRUE</code>
@@ -533,7 +532,7 @@ gdiff(f,
                    test=localSession(Rpath="/R/bin/Rscript")))
   end.rcode-->
     <p>
-    The differences are small (see the red spots in the image of the
+    The differences are small (see the red dots in the image of the
     differences below), but will show up in visual difference testing
     like this.
   </p>
@@ -545,7 +544,7 @@ gdiff(f,
     </h2>
     <p>
     The clipping that is performed by the R graphics engine has been 
-    improved so that there are many fewer artifacts produced by this
+    improved so that there are fewer artifacts produced by this
     clipping.  It is now also possible for a graphics device to indicate,
     via <code>dev-&gt;canClip = NA_LOGICAL</code>, that it does not want
     the graphics engine to perform any clipping at all.
@@ -607,11 +606,11 @@ gdiff(f,
     <h2>How to cite this report</h2>
     <p>
     Murrell, P. (2020). "Improved Clipping in the R Graphics Engine" 
-    Technical Report 2020-??, Department of Statistics, The University of Auckland. 
+    Technical Report 2020-03, Department of Statistics, The University of Auckland. 
     Version 1.
     [ <a href="how-to-cite.bib">bib</a> |
-      <a href="">DOI</a> | 
-      <a href="">http</a> ]
+      <a href="http://doi.org/10.17608/k6.auckland.12443948">DOI</a> | 
+      <a href="http://stattech.blogs.auckland.ac.nz/2020/06/08/2020-03-improved-clipping-in-the-r-graphics-engine/">http</a> ]
   </p>
     <h2>
       <a name="references">9. References</a>
@@ -648,7 +647,7 @@ Murrell, P. (2020a).
 </dt>
 <dd>
 Murrell, P. (2020b).
- Visual testing for graphics in r.
+ Visual Testing for Graphics in R.
  Technical Report 2020-01, Department of Statistics, The University of
   Auckland.
  version 1.
