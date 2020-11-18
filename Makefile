@@ -1,6 +1,17 @@
 
 TARFILE = ../r-clipping-deposit-$(shell date +'%Y-%m-%d').tar.gz
-Rscript = Rscript
+
+# Run processing from more recent R because 'gdiff' code
+# needs to be run from R session that looks for .workRSOCK then
+# falls back to .slaveRSOCK
+# (if run in R <= 4.0.2, will only look for .slaveRSOCK, which does not
+#  exist in more recent R)
+
+# Desktop
+# Rscript = Rscript+
+
+# Docker
+Rscript = /R/bin/Rscript
 
 all:
 	make docker
@@ -21,8 +32,8 @@ all:
 
 docker:
 	# Ensure docker images are up to date
-	sudo docker build --network "host" -f Dockerfile -t pmur002/r-clipping-report .
-	sudo docker run --network "host" -v /var/run/docker.sock:/var/run/docker.sock -v $(shell pwd):$(shell pwd) -w $(shell pwd) --rm pmur002/r-clipping-report make r-clipping.html
+	sudo docker build -f Dockerfile -t pmur002/r-clipping-report .
+	sudo docker run -v /var/run/docker.sock:/var/run/docker.sock -v $(shell pwd):$(shell pwd) -w $(shell pwd) --rm pmur002/r-clipping-report make r-clipping.html
 
 web:
 	make docker

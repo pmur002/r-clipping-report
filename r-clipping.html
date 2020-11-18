@@ -108,8 +108,12 @@
       </span>
     </p>
     <p class="date">
-    Version 1:
-Sunday 07 June 2020
+    Version 2:
+Wednesday 18 November 2020
+  </p>
+    <p class="date versionHistory">
+    Version 1:  original publication (Sunday 07 June 2020)<br>
+    Version 2:  change to dev-&gt;deviceClip (from dev-&gt;canClip=NA_LOGICAL)
   </p>
 
 
@@ -434,18 +438,15 @@ Sunday 07 June 2020
     improve the clipping results.
   </p>
     <h3>
-      <code>dev-&gt;canClip = NA_LOGICAL</code>
+      <code>dev-&gt;deviceClip</code>
     </h3>
     <p>
     The most significant change to the graphics engine
     is that graphics devices can now signal that they would like
     to handle all clipping operations for themselves.
-    Each graphics device has a <code>canClip</code> flag, which
+    Each graphics device has a new <code>deviceClip</code> flag, which
     is a <code>TRUE</code> or <code>FALSE</code> value to indicate whether the
-    device can perform clipping.  This flag can now also take the
-    value <code>NA_LOGICAL</code>, in which case the R graphics engine 
-    will perform no clipping at all before it sends output to the 
-    graphics device.  
+    device wishes to perform <em>all</em> clipping by itself.  
   </p>
     <p>
     One advantage of this change is that there is no chance for the
@@ -453,6 +454,13 @@ Sunday 07 June 2020
     when it clips output.  There may also be performance gains because
     the R graphics engine will no longer be performing any 
     clipping calculations.
+  </p>
+    <p>
+    There is also a new <code>deviceVersion</code> field so that the
+    graphics device can indicate which graphics engine version the device
+    supports.  The graphics engine 
+    will only check the <code>deviceClip</code> flag if the graphics
+    device supports a graphics engine version of 14 or above.
   </p>
     <h3>
       <code>dev-&gt;canClip = TRUE</code>
@@ -554,7 +562,7 @@ Sunday 07 June 2020
       <a name="impacts">4. Impacts on R packages</a>
     </h2>
     <p>
-    The addition of <code>dev-&gt;canClip = NA_LOGICAL</code> may be of interest
+    The addition of <code>dev-&gt;deviceClip</code> may be of interest
     to developers of R graphics device packages, e.g., the 
     'Cairo' package (<a href="#pkg:Cairo">Urbanek and Horner, 2020</a>), in case there are
     performance gains to be had.
@@ -596,7 +604,7 @@ Sunday 07 June 2020
     The clipping that is performed by the R graphics engine has been 
     improved so that there are fewer artifacts produced by this
     clipping.  It is now also possible for a graphics device to indicate,
-    via <code>dev-&gt;canClip = NA_LOGICAL</code>, that it does not want
+    via <code>dev-&gt;deviceClip = TRUE</code>, that it does not want
     the graphics engine to perform any clipping at all.
   </p>
     <h2>
@@ -614,7 +622,7 @@ Sunday 07 June 2020
     </h2>
     <p>
     The examples and discussion in this report relate to 
-    the development version of R (specifically revision 78456),
+    the development version of R (specifically revision 79409),
     which will become R version 4.1.0.
     The examples of "old" clipping behaviour were produced
     using R version 3.6.3.
@@ -641,7 +649,7 @@ Sunday 07 June 2020
       contains code for the other transformations and coordinates
       everything.  
       These materials are also available
-      on <a href="https://github.com/pmur002/r-clipping-report/releases/tag/v1">github</a>.
+      on <a href="https://github.com/pmur002/r-clipping-report/releases/tag/v2">github</a>.
     </li>
       <li>
       This report was generated within a 
@@ -657,7 +665,7 @@ Sunday 07 June 2020
     <p>
     Murrell, P. (2020). "Improved Clipping in the R Graphics Engine" 
     Technical Report 2020-03, Department of Statistics, The University of Auckland. 
-    Version 1.
+    Version 2.
     [ <a href="how-to-cite.bib">bib</a> |
       <a href="http://doi.org/10.17608/k6.auckland.12443948">DOI</a> | 
       <a href="http://stattech.blogs.auckland.ac.nz/2020/06/08/2020-03-improved-clipping-in-the-r-graphics-engine/">http</a> ]

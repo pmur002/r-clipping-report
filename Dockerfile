@@ -19,8 +19,8 @@ RUN apt-get update && apt-get install -y \
     bibtex2html \
     subversion 
 
-# Get R commit r78456
-RUN svn co -r78456 https://svn.r-project.org/R/trunk/ R
+# Get R commit r79409
+RUN svn co -r79409 https://svn.r-project.org/R/trunk/ R
 # Building R from source
 RUN apt-get update && apt-get install -y r-base-dev texlive-full libcairo2-dev
 RUN cd R; ./configure --with-x=no --without-recommended-packages 
